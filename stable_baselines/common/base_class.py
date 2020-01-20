@@ -1086,11 +1086,7 @@ class TensorboardWriter:
 
     def __enter__(self):
         if self.tensorboard_log_path is not None:
-            latest_run_id = self._get_latest_run_id()
-            if self.new_tb_log:
-                latest_run_id = latest_run_id + 1
-            save_path = os.path.join(self.tensorboard_log_path, "{}_{}".format(self.tb_log_name, latest_run_id))
-            self.writer = tf.summary.FileWriter(save_path, graph=self.graph)
+            self.writer = tf.summary.FileWriter(self.tensorboard_log_path, graph=self.graph)
         return self.writer
 
     def _get_latest_run_id(self):
