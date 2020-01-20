@@ -306,6 +306,8 @@ class DDPG(OffPolicyRLModel):
         self.obs_rms_params = None
         self.ret_rms_params = None
 
+        self.training_step = 0
+
         if _init_setup_model:
             self.setup_model()
 
@@ -389,6 +391,11 @@ class DDPG(OffPolicyRLModel):
                     self.normalized_critic_with_actor_tf = self.policy_tf.make_critic(normalized_obs,
                                                                                       self.actor_tf,
                                                                                       reuse=True)
+                    
+                    # log the acton for full tensorboard log
+                    if self.full_tensorboard_log:
+                        tf.summary.histogram('actions', self.actor_tf)
+                    
                 # Noise setup
                 if self.param_noise is not None:
                     self._setup_param_noise(normalized_obs)
@@ -885,6 +892,7 @@ class DDPG(OffPolicyRLModel):
                                 ep_done = np.array([done]).reshape((1, -1))
                                 total_episode_reward_logger(self.episode_reward, ep_rew, ep_done,
                                                             writer, self.num_timesteps)
+
                             step += 1
                             total_steps += 1
                             self.num_timesteps += 1
@@ -939,10 +947,11 @@ class DDPG(OffPolicyRLModel):
 
                             # weird equation to deal with the fact the nb_train_steps will be different
                             # to nb_rollout_steps
-                            step = (int(t_train * (self.nb_rollout_steps / self.nb_train_steps)) +
-                                    self.num_timesteps - self.nb_rollout_steps)
+                            #step = (int(t_train * (self.nb_rollout_steps / self.nb_train_steps)) +
+                            #        self.num_timesteps - self.nb_rollout_steps)
 
-                            critic_loss, actor_loss = self._train_step(step, writer, log=t_train == 0)
+                            critic_loss, actor_loss = self._train_step(self.training_step, writer, log=t_train == 0)
+                            self.training_step += 1
                             epoch_critic_losses.append(critic_loss)
                             epoch_actor_losses.append(actor_loss)
                             self._update_target_net()
@@ -1098,7 +1107,8 @@ class DDPG(OffPolicyRLModel):
             "n_cpu_tf_sess": self.n_cpu_tf_sess,
             "seed": self.seed,
             "_vectorize_action": self._vectorize_action,
-            "policy_kwargs": self.policy_kwargs
+            "policy_kwargs": self.policy_kwargs,
+            'training_step': self.training_step
         }
 
         params_to_save = self.get_parameters()
