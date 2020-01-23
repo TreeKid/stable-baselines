@@ -306,7 +306,7 @@ class DDPG(OffPolicyRLModel):
         self.obs_rms_params = None
         self.ret_rms_params = None
 
-        self.training_step = 0
+        self.train_step = 0
 
         if _init_setup_model:
             self.setup_model()
@@ -950,8 +950,8 @@ class DDPG(OffPolicyRLModel):
                             #step = (int(t_train * (self.nb_rollout_steps / self.nb_train_steps)) +
                             #        self.num_timesteps - self.nb_rollout_steps)
 
-                            critic_loss, actor_loss = self._train_step(self.training_step, writer, log=t_train == 0)
-                            self.training_step += 1
+                            critic_loss, actor_loss = self._train_step(self.train_step, writer, log=t_train == 0)
+                            self.train_step += 1
                             epoch_critic_losses.append(critic_loss)
                             epoch_actor_losses.append(actor_loss)
                             self._update_target_net()
@@ -1108,7 +1108,7 @@ class DDPG(OffPolicyRLModel):
             "seed": self.seed,
             "_vectorize_action": self._vectorize_action,
             "policy_kwargs": self.policy_kwargs,
-            'training_step': self.training_step
+            'train_step': self.train_step
         }
 
         params_to_save = self.get_parameters()
