@@ -693,10 +693,10 @@ class DDPG(OffPolicyRLModel):
             self.critic_target: target_q,
             self.param_noise_stddev: 0 if self.param_noise is None else self.param_noise.current_stddev
         }
-        if writer is not None:
+        if writer is not None and log:
             # run loss backprop with summary if the step_id was not already logged (can happen with the right
             # parameters as the step value is only an estimate)
-            if self.full_tensorboard_log and log and step not in self.tb_seen_steps:
+            if self.full_tensorboard_log  and step not in self.tb_seen_steps:
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
                 summary, actor_grads, actor_loss, critic_grads, critic_loss = \
@@ -864,6 +864,8 @@ class DDPG(OffPolicyRLModel):
                         # Perform rollouts.
                         for _ in range(self.nb_rollout_steps):
                             if total_steps >= total_timesteps:
+                                # update the instance train_step
+                                self.train_step += total_steps
                                 return self
 
                             # Predict next action.
@@ -879,7 +881,7 @@ class DDPG(OffPolicyRLModel):
                             if np.random.rand() < self.random_exploration:
                                 # actions sampled from action space are from range specific to the environment
                                 # but algorithm operates on tanh-squashed actions therefore simple scaling is used
-                                unscaled_action = self.action_space.sample()
+                                unscaled_action = self.astepction_space.sample()
                                 action = scale_action(self.action_space, unscaled_action)
                             else:
                                 # inferred actions need to be transformed to environment action_space before stepping
@@ -947,11 +949,10 @@ class DDPG(OffPolicyRLModel):
 
                             # weird equation to deal with the fact the nb_train_steps will be different
                             # to nb_rollout_steps
-                            #step = (int(t_train * (self.nb_rollout_steps / self.nb_train_steps)) +
-                            #        self.num_timesteps - self.nb_rollout_steps)
+                            step = (int(t_train * (self.nb_rollout_steps / self.nb_train_steps)) +
+                                    self.num_timesteps - self.nb_rollout_steps)
 
-                            critic_loss, actor_loss = self._train_step(self.train_step, writer, log=t_train == 0)
-                            self.train_step += 1
+                            critic_loss, actor_loss = self._train_step(self.train_step+step, writer, log=t_train == 0)
                             epoch_critic_losses.append(critic_loss)
                             epoch_actor_losses.append(actor_loss)
                             self._update_target_net()
@@ -963,6 +964,8 @@ class DDPG(OffPolicyRLModel):
                             eval_episode_reward = 0.
                             for _ in range(self.nb_eval_steps):
                                 if total_steps >= total_timesteps:
+                                    # update the instance train_step
+                                    self.train_step += total_steps
                                     return self
 
                                 eval_action, eval_q = self._policy(eval_obs, apply_noise=False, compute_q=True)
@@ -1044,6 +1047,8 @@ class DDPG(OffPolicyRLModel):
                         if self.eval_env and hasattr(self.eval_env, 'get_state'):
                             with open(os.path.join(logdir, 'eval_env_state.pkl'), 'wb') as file_handler:
                                 pickle.dump(self.eval_env.get_state(), file_handler)
+
+
 
     def predict(self, observation, state=None, mask=None, deterministic=True):
         observation = np.array(observation)
